@@ -1,0 +1,847 @@
+<html>
+  <title>Electric Vehicle Data Visualization Platform</title>
+  <head>
+    <meta charset='utf-8'>
+    <meta name='description' content='Student Website'>
+    <meta author='Michael Sanchez'>
+    <meta charset='utf-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <link rel='shortcut icon' href='laptop.ico' />
+    <!-- Javascript -->
+    <!-- JQuery/JS/Ajax Script -->
+    <script src= "https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"> </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-csv/0.71/jquery.csv-0.71.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/platform/1.3.5/platform.min.js"></script>
+
+    <script type="text/javascript">
+    // Initialize Array for CSV data
+    var CSVdata=new Array();
+
+    //Document-ready function; Three event handlers
+    // we prevent default from happening with each; Most important for the submit event
+    //This is responsible for intitiating the file upload process
+    $(function(){
+    $("navLoadCSV").on('click', function(e){ //Attached to subnav-content heading
+    e.preventDefault();
+    $("#fileToUpload").trigger('click');
+    });
+    $("#CSVform").on("submit", function (e) { //Attached to subnav-content form submit
+    e.preventDefault();
+    $("#fileToUpload").trigger('click');
+    });
+    $("#navLoadCSV2").on("click", function (e) { //Attached to subnav-content browse/input box
+    e.preventDefault();
+    $("#fileToUpload").trigger('click');
+    });
+    
+    });
+    //---------------------------------------------------------------------------
+    $(document).ready(function() {
+      var userAgent = navigator.userAgent;
+      var browserName = "Unknown";
+      var browserVersion = "Unknown";
+
+      if (userAgent.includes("Firefox")) {
+          browserName = "Mozilla Firefox";
+          browserVersion = userAgent.match(/Firefox\/([\d.]+)/)[1];
+      } else if (userAgent.includes("Chrome")) {
+          browserName = "Google Chrome";
+          browserVersion = userAgent.match(/Chrome\/([\d.]+)/)[1];
+      } else if (userAgent.includes("Safari")) {
+          browserName = "Apple Safari";
+          browserVersion = userAgent.match(/Version\/([\d.]+)/)[1];
+      } else if (userAgent.includes("Edge")) {
+          browserName = "Microsoft Edge";
+          browserVersion = userAgent.match(/Edge\/([\d.]+)/)[1];
+      } else if (userAgent.includes("MSIE") || userAgent.includes("Trident")) {
+          browserName = "Internet Explorer";
+          browserVersion = userAgent.match(/(?:MSIE|rv:)\s?([\d.]+)/)[1];
+      }
+     // var os = navigator.platform;
+      var osInfo = platform.os;
+//console.log("OS Name: " + osInfo.family);
+//console.log("OS Version: " + osInfo.version);
+      var cookiesEnable = navigator.cookieEnabled;
+      var javaEnable = navigator.javaEnabled();
+      document.getElementById("clientinfo-body").innerHTML =
+                   "<br><h5>Browser Name: "+browserName +
+                   "<br>Browser Version: "+browserVersion+
+                   "<br>Operating System: "+ osInfo.family +
+                   "<br>OS Version: "+ osInfo.version +
+                   "<br>Cookies enabled: "+ cookiesEnable +
+                   "<br>Java Enabled: "+javaEnable +"</h5>" ;
+
+
+
+    });
+    //----------------------------------------------------------------------------
+    $(document).ready(function() {
+          // Function to check if a cookie exists
+    var cookieExists = function(name) {
+        return document.cookie.split(';').some(cookie => {
+            return cookie.trim().startsWith(name + '=');
+        });
+    };
+
+
+
+    var checkUserLoggedCookie= function(){
+          // Check if the "user_logged" cookie exists
+    if (cookieExists('user_logged')) {
+        // Cookie exists, hide the form element
+            document.getElementById('LoginForm').style.display = 'none';
+            $('#login-message').html('You are Logged in!');
+            document.getElementById('login-message').style.display = 'block';
+            document.getElementById('logout-button').setAttribute('data-bs-toggle','modal');
+
+
+
+        }
+    else{
+        //cookie does not exists
+      document.getElementById('LoginForm').style.display = 'block';
+      $('#login-message').html('');
+      document.getElementById('login-message').style.display = 'none';
+      document.getElementById('logout-button').removeAttribute('data-bs-toggle');
+      $('#logoutDBModal').modal('hide');
+    }
+
+
+    };
+
+    checkUserLoggedCookie();
+
+    $('#db-logout').click(function(e) {
+      /* Act on the event */
+      e.preventDefault();
+      //Disable cookie
+      $.ajax({
+                    type: "POST",
+                    url: "logout.php",
+                    success: function(response) {
+                        // Handle the response from the PHP script
+                        if (response === 'success') {
+                            alert('Logout Successful.');
+                            //Check cookie deletion success
+                            checkUserLoggedCookie();
+                            //Clear login info
+                            document.getElementById('loginUname').value = '';
+                            document.getElementById('loginpassword').value = '';
+                            document.getElementById("message-area-3").innerHTML ="" ;
+                            document.getElementById("userinfo-body").innerHTML ="" ;
+
+                        } else {
+                            alert('Logout Failed Try again later.');
+                        }
+                    }
+                });
+
+              
+        });
+
+
+    $('#LoginForm').submit(function(e) {
+        e.preventDefault();
+
+        var username = $('#loginUname').val();
+        var password = $('#loginpassword').val();
+
+        // Send a POST request to the server to validate credentials
+        $.ajax({
+            type: 'POST',
+            url: 'login.php', // The server-side script to process the login
+            data: {
+                username: username,
+                password: password
+            },
+            dataType: 'json', //treat the response as JSON
+            success: function(response) {
+                if (response.status === 'success') {
+                    //Perform Success Operations
+                   $('#login-message').html('Login Successful!');
+                   document.getElementById("message-area-3").innerHTML ="<br><h4> Welcome " + response.user_data.name +"!</h4>" ;
+                   document.getElementById('login-message').style.display = 'block';
+
+                   document.getElementById("userinfo-body").innerHTML =
+                   "<br><h5>User ID: "+response.user_data.uid +
+                   "<br>Login: "+username+
+                   "<br>Name: "+ response.user_data.name +
+                   "<br>Gender: "+response.user_data.gender +"</h5>" ;
+      
+                   checkUserLoggedCookie();
+
+
+                    // Redirect to a dashboard or perform other actions on successful login
+                    //window.location.href = 'dashboard.html';
+                } else {
+                    //Perform Fail Operations
+                    $('#login-message').html(response.message);
+                    document.getElementById('login-message').style.display = 'block';
+                    
+                }
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                  // Handle AJAX errors here
+                  console.log('AJAX error:', textStatus, errorThrown);
+    }
+        });
+    });
+    $('#exit-button').click(function(e) { 
+      //Check if logged in
+      if(cookieExists('user_logged')){
+        $("#db-logout").trigger('click');
+      }
+      
+      // Close the current browser tab
+      window.close();
+
+      var delayInMilliseconds = 1000; //1 second
+
+    setTimeout(function() {
+      //execute code after 1 second
+      //IF window close doesnt work we refresh the tab
+      document.getElementById("exit-button2").click();
+    }, delayInMilliseconds);
+      
+      
+
+      });
+});
+
+
+    //----------------------------------------------------------------------
+
+
+
+
+    //---------------------------------------------------------------------------
+    //Another Document Ready function
+    //Three Functions: browserSupportFileUpload(), uploadFile(), createArray()
+    $(document).ready(function() {
+    // Confirm browser supports HTML5 File API
+    //It does this by testing a few File API functions
+    var browserSupportFileUpload = function() {
+    var isCompatible = false;
+    if(window.File && window.FileReader && window.FileList && window.Blob) {
+    isCompatible = true; //Set to true if the file API functions are available, else its left on false
+    }
+    return isCompatible; //we return the isCompatible boolean
+    };
+    // Upload selected file and create array
+    //Handles the "change" even on element ID fileToUpload as seen down below
+    var uploadFile = function(evt) {
+    var file = evt.target.files[0]; //Retrieve the selected file from the change event
+    var reader = new FileReader(); //create FileReader object to read the file's contents
+    reader.readAsText(file); //Read the file as a text.
+    reader.onload = function(event) { //When the reading operation is complete
+    
+    
+    // Define an array of column indices that should be treated as strings
+    var stringColumns = [1,5,6,14,17]; // Replace with the indices of the columns you want as strings
+    //Jquery.CSVdata                  //It calls the createArray() to process the file's contents as a CSV
+    //createArray($.csv.toArrays(event.target.result));
+    createArray($.csv.toArrays(event.target.result, {
+    onParseValue: function(value, state) {
+    //Ensure the heading row is set to string
+    if(state.rowNum <= 1){
+    //console.log("Hello World");
+    //console.log(value);
+    return value;
+    };
+    //check if the column belongs to a string column
+    if(stringColumns.includes(state.colNum)) {
+    return value; // Treat as a string
+    };
+    // Determine the type of each value (int, float, or string)
+    var num = parseFloat(value);
+    return isNaN(num) ? value : num;
+    },
+    hasHeader: true // Include the header row
+    }));
+    };
+    };
+    // Validate file imported data, assumed to be a CSV
+    var createArray = function(data) {
+    //Checks if data is not null, not an empty string, has more than one element
+    if(data !== null && data !== "" && data.length > 1) {
+    //If it passes then we import the data into our variable CSVdata
+    this.CSVdata = data;
+    //drawTable(data);
+    //update our message area and displays a message
+    document.getElementById("message-area-2").innerHTML ="<br><br><h4>The File has been upload successful with " + CSVdata.length +" records!</h4>" ;
+    //alert("File Upload Success!") // You can use the alert box to give messages to the user.
+    //But not useful for our purposes.
+    }
+    else {  //Else if it does not pass our previous checks,
+    //we send back an error message to the message area
+    $("#message-area-2").html('<br><br><h4>The File could not be loaded!</h4>');
+    
+    }
+    };
+
+
+
+    //Create Statements
+    var createTable = function(data) {
+    if(data === undefined || data.length == 0){
+    alert("Please select a valid CSV first.");
+    }
+    else{
+    drawTable(data);
+    }
+    };
+    var createLineGraph =function(data) {
+    if(data === undefined || data.length == 0){
+    alert("Please select a valid CSV first.");
+    }
+    else{
+    drawLineGraph(data);
+    }
+    };
+    var createPieGraph =function(data) {
+    if(data === undefined || data.length == 0){
+    alert("Please select a valid CSV first.");
+    }
+    else{
+    drawPieGraph(data);
+    }
+    };
+    var createGeoChart =function(data) {
+    if(data === undefined || data.length == 0){
+    alert("Please select a valid CSV first.");
+    }
+    else{
+    drawGeoChart(data);
+    }
+    };
+    var createBarChart =function(data) {
+    if(data === undefined || data.length == 0){
+    alert("Please select a valid CSV first.");
+    }
+    else{
+    drawBarChart(data);
+    }
+    };
+
+    //-------------------------------------------------    
+    // event listener for file upload
+    // created by checking that the browser supports File API- seen above
+    if (browserSupportFileUpload()) {
+    //If the browser is suppored we add the event listener to fileToUpload change event,
+    // and run the uploadFile function
+    document.getElementById('fileToUpload').addEventListener('change', uploadFile, false);
+    document.getElementById('load-csv').addEventListener('click', function(){createTable(CSVdata)}, false);
+    document.getElementById('line-graph').addEventListener('click', function(){createLineGraph(CSVdata)}, false);
+    document.getElementById('pie-graph').addEventListener('click', function(){createPieGraph(CSVdata)}, false);
+    document.getElementById('geo-chart').addEventListener('click', function(){createGeoChart(CSVdata)}, false);
+    document.getElementById('bar-chart').addEventListener('click', function(){createBarChart(CSVdata)}, false);
+    } else {
+    //else if the browser doesnt support File API, we send back an error message
+    $("#message-area").html('This browser does not full support the File APIs. Please try again in another browser.');
+    }
+    });
+    </script>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script type="text/javascript">
+    google.charts.load('current', {'packages':['table']});
+    google.charts.load('current', {'packages':['corechart']});
+    google.charts.load('current', {'packages':['geochart']});
+    google.charts.setOnLoadCallback();
+    
+    //-------------------------------------------------------------------------------------------------------
+    //Draw Table using CSVdata
+    function drawTable(CSVdata) {
+    
+    var data = new google.visualization.arrayToDataTable(CSVdata);
+    var table = new google.visualization.Table(document.getElementById('table-div'));
+    table.draw(data, {showRowNumber: true, width: '100%', height: '100%',
+    page:'enable', pageSize:20, pagingSymbols:{prev:'prev', next:'next'}, pagingButtonsConfiguration:'auto'});
+    };
+
+    //----------------------------------------------------------------------------------------------------------
+    //Draw Line Graph using CSVdata; Column 5- Model Year, Column 10 Electric Range,
+    function drawLineGraph(CSVdata) {
+    var data = new google.visualization.arrayToDataTable(CSVdata);
+    var view = new google.visualization.DataView(data);
+    var groupedData = google.visualization.data.group(
+    view, [5], [
+    {
+    column: 10,
+    label: data.getColumnLabel(10),
+    aggregation: google.visualization.data.avg,
+    type: 'number'
+    },
+    /*{
+    column: 11,
+    label: data.getColumnLabel(11),
+    aggregation: google.visualization.data.sum,
+    type: 'number'
+    }*/
+    ]
+    );
+    //var lineView = new google.visualization.DataView(data);
+    //lineView.setColumns([4,10,11]);
+    var options ={
+    width: '100%',
+    height: '100%',
+    title: 'Electric Vehicles in Washington State: Average Electric Range based on EV Year Models',
+    curveType:'none',
+    legend:{position: 'bottom'},
+    hAxis: {title:data.getColumnLabel(5)},
+    vAxis: {title:data.getColumnLabel(10)},
+    };
+    var lineChart = new google.visualization.LineChart(document.getElementById('graph-div'));
+    lineChart.draw(groupedData, options);
+    };
+
+    //-----------------------------------------------------------------------------------------------------------
+    //Draw pie graph using CSVdata; Column 6- Make, Count of column 6: how many times does it appear in our dataset,
+    function drawPieGraph(CSVdata) {
+    var data = new google.visualization.arrayToDataTable(CSVdata);
+    var view = new google.visualization.DataView(data);
+    var groupedData = google.visualization.data.group(
+    view, [6], [
+    {
+    column: 6,
+    label: data.getColumnLabel(6),
+    aggregation: google.visualization.data.count,
+    type: 'number'
+    },
+    /*{
+    column: 11,
+    label: data.getColumnLabel(11),
+    aggregation: google.visualization.data.sum,
+    type: 'number'
+    }*/
+    ]
+    );
+    //var lineView = new google.visualization.DataView(data);
+    //lineView.setColumns([4,10,11]);
+    var options ={
+    width: '100%',
+    height: '100%',
+    title: 'Electric Vehicles in Washington State: Count of EVs by Make',
+    curveType:'function',
+    legend:{position: 'bottom'},
+    // hAxis: {title:data.getColumnLabel(5)},
+    //vAxis: {title:data.getColumnLabel(10)},
+    };
+    var pieChart = new google.visualization.PieChart(document.getElementById('graph-div'));
+    pieChart.draw(groupedData, options);
+    };
+
+    //------------------------------------------------------------------------------------------------------
+    //Map State abbreviations to ISO 3166-2 state-codes
+    var stateAbbreviationsToISO = {
+    'AL': 'US-AL',
+    'AK': 'US-AK',
+    'AZ': 'US-AZ',
+    'AR': 'US-AR',
+    'CA': 'US-CA',
+    'CO': 'US-CO',
+    'CT': 'US-CT',
+    'DE': 'US-DE',
+    'FL': 'US-FL',
+    'GA': 'US-GA',
+    'HI': 'US-HI',
+    'ID': 'US-ID',
+    'IL': 'US-IL',
+    'IN': 'US-IN',
+    'IA': 'US-IA',
+    'KS': 'US-KS',
+    'KY': 'US-KY',
+    'LA': 'US-LA',
+    'ME': 'US-ME',
+    'MD': 'US-MD',
+    'MA': 'US-MA',
+    'MI': 'US-MI',
+    'MN': 'US-MN',
+    'MS': 'US-MS',
+    'MO': 'US-MO',
+    'MT': 'US-MT',
+    'NE': 'US-NE',
+    'NV': 'US-NV',
+    'NH': 'US-NH',
+    'NJ': 'US-NJ',
+    'NM': 'US-NM',
+    'NY': 'US-NY',
+    'NC': 'US-NC',
+    'ND': 'US-ND',
+    'OH': 'US-OH',
+    'OK': 'US-OK',
+    'OR': 'US-OR',
+    'PA': 'US-PA',
+    'RI': 'US-RI',
+    'SC': 'US-SC',
+    'SD': 'US-SD',
+    'TN': 'US-TN',
+    'TX': 'US-TX',
+    'UT': 'US-UT',
+    'VT': 'US-VT',
+    'VA': 'US-VA',
+    'WA': 'US-WA',
+    'WV': 'US-WV',
+    'WI': 'US-WI',
+    'WY': 'US-WY'
+    };
+    //--------------------------------------------------------------------------------------------
+    //Draw geo chart using CSVdata; Column 5- Model Year, Column 10 Electric Range,
+    function drawGeoChart(CSVdata) {
+    var data = new google.visualization.arrayToDataTable(CSVdata);
+    var view = new google.visualization.DataView(data);
+    var groupedData = google.visualization.data.group(
+    view, [3], [
+    {
+    column: 3,
+    label: data.getColumnLabel(3),
+    aggregation: google.visualization.data.count,
+    type: 'number'
+    },
+    /*{
+    column: 11,
+    label: data.getColumnLabel(11),
+    aggregation: google.visualization.data.sum,
+    type: 'number'
+    }*/
+    ]
+    );
+    // Map the state abbreviations to ISO 3166-2 state codes
+    for (var i = 0; i < groupedData.getNumberOfRows(); i++) {
+    var stateAbbreviation = groupedData.getValue(i, 0);
+    var isoCode = stateAbbreviationsToISO[stateAbbreviation];
+    groupedData.setCell(i, 0, isoCode);
+    }
+    var options ={
+    width: '100%',
+    height: '100%',
+    title: 'Electric Vehicles in US: Total EVs per state',
+    legend:{position: 'bottom'},
+    region: 'US',//Set Region to 'US' to display the united states.
+    displayMode: 'regions',
+    resolution: 'provinces',
+    // hAxis: {title:data.getColumnLabel(5)},
+    //vAxis: {title:data.getColumnLabel(10)},
+    };
+    var geoChart = new google.visualization.GeoChart(document.getElementById('graph-div'));
+    geoChart.draw(groupedData, options);
+    };
+
+
+    //--------------------------------------------------------------------------------------
+     //Draw Bar Graph using CSVdata; Column 5- Model Year, Column 10 Electric Range,
+    function drawBarChart(CSVdata) {
+    var data = new google.visualization.arrayToDataTable(CSVdata);
+    //define a filter condition
+    var filterCondition = function(row){
+      return view.getValue(row, 6) === 'TESLA';
+    }
+    var view = new google.visualization.DataView(data);
+
+    view.setRows(view.getFilteredRows([{column: 6, value: 'TESLA'}]));
+
+    var groupedData = google.visualization.data.group(
+    view, [7], [
+    {
+    column: 7,
+    label: data.getColumnLabel(7),
+    aggregation: google.visualization.data.count,
+    type: 'number'
+    },
+    /*{
+    column: 11,
+    label: data.getColumnLabel(11),
+    aggregation: google.visualization.data.sum,
+    type: 'number'
+    }*/
+    ]
+    );
+    //var lineView = new google.visualization.DataView(data);
+    //lineView.setColumns([4,10,11]);
+    var options ={
+    width: '100%',
+    height: '100%',
+    title: 'Electric Vehicles in Washington State: Tesla Models',
+    legend:{position: 'bottom'},
+    hAxis: {title:'Count'},
+    vAxis: {title:data.getColumnLabel(7)},
+    };
+    var barChart = new google.visualization.BarChart(document.getElementById('graph-div'));
+    barChart.draw(groupedData, options);
+    };
+
+
+
+
+
+
+
+
+    </script>
+    <!-- End of Script -->
+  </head>
+  <body>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous"></script>
+    
+    <!-- CSS -->
+    <style>
+    /*Body CSS */
+    body{
+    background-color: antiquewhite;
+    }
+    /*Message Area: Rounded Edges, light gray, centered*/
+    .message-area{
+    border-radius: 25px;
+    background: #444;
+    padding: 20px;
+    margin:auto;
+    text-align: center;
+    width: 85%;
+    height: 500px;
+    
+    }
+    </style>
+    <!-- CSS End -->
+    <!--Nav Bar Menu and submenus -->
+    <nav class="navbar navbar-expand-lg bg-body-tertiary">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="#">Electric Vehicle Data Visualization Platform Washingston State</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+          <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+            
+            
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                File
+              </a>
+              <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#"  data-bs-toggle="modal" data-bs-target="#loadCSVModal">Load CSV file</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="#"data-bs-toggle="modal" data-bs-target="#loginDBModal" >Login to DB</a></li>
+                <li><a class="dropdown-item" href="#"data-bs-toggle="modal" data-bs-target="#logoutDBModal" name="logout-button" id="logout-button">Logout DB</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="#" id="exit-button">Exit</a>
+                    <a class="dropdown-item" href="" id="exit-button2" style="display: none;"></a></li>
+              </ul>
+            </li>
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                View
+              </a>
+              <ul class="dropdown-menu">
+                <li><a class="dropdown-item" id="line-graph" href="#">Line</a></li>
+                <li><a class="dropdown-item" id="pie-graph" href="#">Pie</a></li>
+                <li><a class="dropdown-item" id="bar-chart" href="#">Bar</a></li>
+                <li><a class="dropdown-item" id="geo-chart" href="#">Map</a></li>
+              </ul>
+            </li>
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                Setting
+              </a>
+              <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#"data-bs-toggle="modal" data-bs-target="#userInfoDBModal" name="userinfo-button" id="logout-button">User Info</a></li>
+              </ul>
+            </li>
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                Help
+              </a>
+              <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#"data-bs-toggle="modal" data-bs-target="#infoModal">Info</a></li>
+                <li><a class="dropdown-item" href="#"data-bs-toggle="modal" data-bs-target="#clientInfoModal">Client</a></li>
+              </ul>
+            </li>
+          </ul>
+          <!--<form class="d-flex" role="search">
+            <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search">
+            <button class="btn btn-outline-success" type="submit">Search</button>
+          </form>-->
+        </div>
+      </div>
+    </nav>
+    <!-- Navbar end -->
+    <!-- Modal Section-->
+    <!-- Load CSV -->
+    <div class="modal fade" id="loadCSVModal" tabindex="-1" aria-labelledby="loadCSVModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h4 class="modal-title" id="loadCSVModalLabel">Load CSV</h4>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <a href="#" id="navLoadCSV2" style="color:inherit; text-decoration: inherit;"><h5 class="modal-title" id="loadCSVModalLabel">Process File</h5></a>
+            <a href="#" id="navLoadCSV">
+              <form id="CSVform"action="" method="post">
+                <input type = "file" id="fileToUpload" name="fileToUpload" accept=".csv">
+                <input  type="submit" value="Upload File" >
+              </form></a>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Close</button>
+              <button type="button" class="btn btn-primary" id="load-csv" name="load-csv" >Load CSV Table</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Load CSV End -->
+      <!-- login to DB -->
+      <div class="modal fade" id="loginDBModal" tabindex="-1" aria-labelledby="loginDBModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h4 class="modal-title" id="loginDBModalLabel">Login to DB</h4>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+
+              <div class = "login-message alert alert-primary" id= "login-message" role="alert" style="display:none;">
+               </div>
+               <div>
+                <H3>Sorry this feature is currently unavailable!</H3>
+               </div>
+              <form  id="LoginForm" name="LoginForm" method = "post" action = "">
+                <div class="divider d-flex align-items-center my-4">
+                  <h2 class="text-center fw-bold mx-3 mb-1 mt-5 " >Login</h2>
+                </div>
+                <!-- Email input -->
+                <div class="form-outline mb-4 " >
+                  <input type = "text" name="loginUname" id="loginUname" class="form-control form-control-lg"
+                  placeholder="Username" maxlength="50" required>
+                  <label class="form-label" for="loginUname">Username</label>
+                </div>
+                <!-- Password input -->
+                <div class="form-outline mb-3">
+                  <input name="loginpassword" type="password" id="loginpassword" class="form-control form-control-lg"
+                  placeholder="Password" minlength="2" maxlength="15" required>
+                  <label class="form-label" for="loginpassword">Password</label>
+                </div>
+                <div class="text-center text-lg-start mt-4 pt-2">
+                  <button type="submit" class="btn btn-primary btn-lg" id="submit-button">Login</button>
+                </div>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Close</button>
+              <!--<button type="button" class="btn btn-primary" id="load-csv" name="load-csv" >Load CSV</button>-->
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- login to DB end -->
+
+      <!-- Logout DB Modal-->
+      <div class="modal fade" id="logoutDBModal" tabindex="-1" aria-labelledby="logoutDBModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h4 class="modal-title" id="logoutDBModalLabel">Are you sure you want to Logout?</h4>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <button type="button" class="btn btn-warning" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" class="btn btn-danger" id="db-logout" name="db-logout" >Log Out</button>              
+            </div>
+            <div class="modal-footer">
+              
+            </div>
+          </div>
+        </div>
+      </div>      
+      <!-- logout DB Modal End-->
+      <!-- User Info Modal-->
+      <div class="modal fade" id="userInfoDBModal" tabindex="-1" aria-labelledby="userInfoDBModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h4 class="modal-title" id="userInfoDBModalLabel">User Info</h4>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="userinfo-body">
+                          
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-warning" data-bs-dismiss="modal">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>      
+      <!-- User Info Modal End-->
+      <!-- User Info Modal-->
+      <div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h4 class="modal-title" id="infoModalLabel">Info</h4>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="info-body">
+              <h5>
+                <br><b>Developer:</b> Michael Sanchez
+                <br><b>Title:</b> Electric Vehicle Data Visualization
+                <br><b>Description:</b> 
+                <br>A data visualization web app analyzing electric vehicle records from Washington State, 
+                transforming raw data into interactive dashboards. Currently CSV file is only supported.
+                <br><B>Data</B> Download the latest Washington EV Data(CSV/Text) here: <a href="https://catalog.data.gov/dataset/electric-vehicle-population-data">Washington State EV Data</a>
+                <br>Or Grab the CSV file available on   <a href="https://github.com/MikeySz/MikeySz.github.io">My Github Repository</a>
+              </h5>
+                          
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-warning" data-bs-dismiss="modal">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>      
+      <!-- User Info Modal End-->
+      <!-- Client Info Modal-->
+      <div class="modal fade" id="clientInfoModal" tabindex="-1" aria-labelledby="clientInfoModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h4 class="modal-title" id="clientInfoModalLabel">Info</h4>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="clientinfo-body">                
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-warning" data-bs-dismiss="modal">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>      
+      <!-- User Info Modal End-->
+
+
+
+
+      <!-- Modal Section End-->
+      <!-- Display Section-->
+      <div class="container-fluid text-center">
+        <div class = "row" id= "message-area-3"> 
+        </div>
+        <div class = "row message-area-2" id= "message-area-2">
+        </div>
+        <!--<div class="row">
+          <div class="col" style="">
+            <h3> Message Area</h3>
+            <div class= "message-area" id ="message-area" style ="color: #f2f2f2; margin-top: 5px;">
+            </div>
+          </div> </div>-->
+          <div class="row">
+            <div class="col" id="graph-div" style="min-height:25em; "></div>
+          </div>
+          <div class ="row">
+            <div class="col" id="table-div" style="height:25em;"></div>
+            <!--<div class="col" style="background-color:grey">Column</div>-->
+          </div>
+        </div>
+        <!-- Display Section End-->
+      </body>
+    </html>
